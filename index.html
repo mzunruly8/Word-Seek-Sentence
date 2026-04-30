@@ -4,7 +4,490 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Word Seek Sentence</title>
-<!-- Styles will be inserted here in Part 2 -->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0d0d1a;
+    --arena-bg: #111128;
+    --accent: #f7c948;
+    --accent2: #ff6b6b;
+    --accent3: #6bffb8;
+    --accent4: #6b9fff;
+    --text: #f0f0f8;
+    --wall: #2a2a4a;
+    --hide-zone: #1a3a2a;
+    --opponent: #ff4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; touch-action: none; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; }
+  .screen.active { display: flex; }
+
+  /* ===== TITLE ===== */
+  #title-screen {
+    background: radial-gradient(ellipse at center, #1a1a3a 0%, #0d0d1a 70%);
+    gap: 20px;
+    padding: 30px;
+    text-align: center;
+  }
+  .game-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(247,201,72,0.5), 0 4px 0 #8a6a00;
+    line-height: 1.1;
+    letter-spacing: 2px;
+  }
+  .game-subtitle {
+    font-size: clamp(0.8rem, 3vw, 1rem);
+    color: var(--accent3);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+  .floating-words {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .float-word {
+    position: absolute;
+    font-family: 'Fredoka One', cursive;
+    opacity: 0.08;
+    animation: floatAround linear infinite;
+    color: var(--accent);
+  }
+  @keyframes floatAround {
+    0% { transform: translateY(110vh) rotate(0deg); }
+    100% { transform: translateY(-20vh) rotate(360deg); }
+  }
+  .btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 50px;
+    padding: 14px 36px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.2rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 0 4px 0 #8a6a00;
+  }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #8a6a00; }
+  .btn.secondary {
+    background: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    box-shadow: none;
+  }
+
+  /* ===== TUTORIAL ===== */
+  #tutorial-screen { padding: 20px; gap: 16px; text-align: center; }
+  .tut-page { display: none; flex-direction: column; align-items: center; gap: 12px; }
+  .tut-page.active { display: flex; }
+  .tut-icon { font-size: 3rem; }
+  .tut-title { font-family: 'Fredoka One', cursive; font-size: 1.6rem; color: var(--accent); }
+  .tut-text { font-size: 0.95rem; color: #ccc; line-height: 1.6; max-width: 320px; }
+  .tut-dots
+  .tut-dots { display: flex; gap: 8px; }
+  .tut-dot { width: 10px; height: 10px; border-radius: 50%; background: #333; transition: background 0.3s; }
+  .tut-dot.active { background: var(--accent); }
+  .pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; max-width: 300px; }
+  .pos-card {
+    background: #1a1a2e;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #333;
+  }
+  .pos-card .emoji { font-size: 1.5rem; }
+  .pos-card .pos-name { font-size: 0.7rem; font-weight: 800; color: var(--accent); text-transform: uppercase; }
+  .pos-card .pos-desc { font-size: 0.65rem; color: #aaa; margin-top: 2px; }
+
+  /* ===== GAME SCREEN ===== */
+  #game-screen { position: relative; overflow: hidden; }
+
+  .game-hud {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: rgba(13,13,26,0.9);
+    z-index: 20;
+    gap: 8px;
+  }
+  .hud-timer {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.4rem;
+    color: var(--accent);
+    min-width: 60px;
+  }
+  .hud-timer.warning { color: var(--accent2); animation: pulse 0.5s infinite alternate; }
+  @keyframes pulse { from { opacity: 1; } to { opacity: 0.4; } }
+  .hud-coins {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--accent);
+  }
+  .hud-level {
+    font-size: 0.75rem;
+    color: #aaa;
+    text-align: center;
+  }
+
+  /* Arena */
+  #arena-container {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #arena {
+    position: relative;
+    border-radius: 50%;
+    background: var(--arena-bg);
+    border: 3px solid #2a2a5a;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(107,159,255,0.1), inset 0 0 60px rgba(0,0,0,0.5);
+  }
+
+  /* Grid lines inside arena */
+  #arena::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px),
+      repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.02) 40px);
+  }
+
+  /* Player */
+  .player-entity {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: none;
+    transition: transform 0.05s;
+    z-index: 10;
+    user-select: none;
+  }
+  #player {
+    background: radial-gradient(circle at 35% 35%, #7affcc, var(--accent3));
+    color: #003;
+    box-shadow: 0 0 12px rgba(107,255,184,0.6);
+    z-index: 11;
+  }
+  #opponent {
+    background: radial-gradient(circle at 35% 35%, #ff8888, var(--opponent));
+    color: #fff;
+    box-shadow: 0 0 12px rgba(255,68,68,0.6);
+  }
+
+  /* Word NPCs */
+  .word-npc {
+    position: absolute;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    z-index: 8;
+    transition: box-shadow 0.2s;
+    white-space: nowrap;
+  }
+  .word-npc.noun { background: #1a3a6a; color: #6b9fff; border: 1px solid #6b9fff44; }
+  .word-npc.verb { background: #3a1a1a; color: #ff8888; border: 1px solid #ff888844; }
+  .word-npc.adjective { background: #2a1a3a; color: #cc88ff; border: 1px solid #cc88ff44; }
+  .word-npc.pronoun { background: #3a2a0a; color: #f7c948; border: 1px solid #f7c94844; }
+  .word-npc.adverb { background: #1a3a2a; color: #6bffb8; border: 1px solid #6bffb844; }
+  .word-npc.article { background: #2a2a2a; color: #aaa; border: 1px solid #aaa4; }
+  .word-npc.hiding { opacity: 0.3; }
+  .word-npc.captured { display: none; }
+
+  /* Walls */
+  .wall {
+    position: absolute;
+    background: var(--wall);
+    border-radius: 4px;
+    z-index: 5;
+  }
+
+  /* Hide zones */
+  .hide-zone {
+    position: absolute;
+    background: var(--hide-zone);
+    border: 1px dashed #2a5a3a;
+    border-radius: 8px;
+    z-index: 3;
+  }
+
+  /* Flag */
+  #flag {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    animation: flagPulse 2s ease-in-out infinite;
+  }
+  @keyframes flagPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+
+  /* Gift box */
+  .gift-box {
+    position: absolute;
+    width: 36px;
+    height: 36px;
+    z-index: 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    cursor: pointer;
+    animation: giftBounce 1s ease-in-out infinite;
+  }
+  @keyframes giftBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+  /* Collected words bar */
+  #word-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(13,13,26,0.95);
+    padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    z-index: 20;
+    min-height: 48px;
+    border-top: 1px solid #2a2a4a;
+  }
+  .collected-word {
+    background: #1e1e38;
+    border: 1px solid #4a4a8a;
+    border-radius: 12px;
+    padding: 3px 10px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.75rem;
+    color: var(--text);
+    cursor: grab;
+  }
+  #bar-label {
+    font-size: 0.6rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: 100%;
+  }
+
+  /* Joystick */
+  #joystick-area {
+    position: absolute;
+    inset: 0;
+    z-index: 15;
+    pointer-events: none;
+  }
+  #joystick-base {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 2px solid rgba(255,255,255,0.15);
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  #joystick-knob {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(107,255,184,0.5);
+    border: 2px solid var(--accent3);
+    position: relative;
+  }
+
+  /* Screen shake */
+  @keyframes shake {
+    0%,100% { transform: translate(0,0); }
+    20% { transform: translate(-6px, 3px); }
+    40% { transform: translate(6px, -3px); }
+    60% { transform: translate(-4px, 5px); }
+    80% { transform: translate(4px, -2px); }
+  }
+  .shaking { animation: shake 0.4s ease; }
+
+  /* ===== SENTENCE SCREEN ===== */
+  #sentence-screen {
+    padding: 20px;
+    gap: 16px;
+    background: radial-gradient(ellipse at center, #1a1a3a 0%, #0d0d1a 70%);
+  }
+  .sentence-title { font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--accent); }
+  .sentence-hint { font-size: 0.8rem; color: #aaa; text-align: center; max-width: 300px; }
+  #sentence-builder {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 80px;
+    background: #1a1a2e;
+    border-radius: 12px;
+    padding: 12px;
+    width: 100%;
+    max-width: 360px;
+    border: 2px dashed #3a3a6a;
+    align-content: flex-start;
+  }
+  .sentence-word {
+    background: #2a2a4a;
+    border: 1px solid #6b9fff;
+    border-radius: 16px;
+    padding: 5px 12px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.85rem;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .sentence-word:active { transform: scale(0.95); }
+  #available-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    max-width: 360px;
+    justify-content: center;
+  }
+  .avail-word {
+    background: #1e1e38;
+    border: 1px solid #4a4a8a;
+    border-radius: 12px;
+    padding: 5px 12px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.8rem;
+    color: #ccc;
+    cursor: pointer;
+  }
+  .avail-word:active { transform: scale(0.95); }
+  .punct-section { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .punct-word {
+    background: #2a1a00;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 5px 10px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  #sentence-feedback {
+    font-size: 0.85rem;
+    text-align: center;
+    min-height: 20px;
+    font-weight: 700;
+  }
+  .feedback-good { color: var(--accent3); }
+  .feedback-bad { color: var(--accent2); }
+
+  /* ===== WIN SCREEN ===== */
+  #win-screen {
+    gap: 16px;
+    padding: 30px;
+    text-align: center;
+    background: radial-gradient(ellipse at center, #1a2a1a 0%, #0d0d1a 70%);
+  }
+  .win-title { font-family: 'Fredoka One', cursive; font-size: 2rem; color: var(--accent3); }
+  .win-sentence {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.1rem;
+    color: var(--text);
+    font-style: italic;
+    background: #1a1a2e;
+    padding: 14px;
+    border-radius: 10px;
+    border-left: 4px solid var(--accent);
+    max-width: 320px;
+    text-align: left;
+  }
+  .win-stats { display: flex; gap: 20px; }
+  .stat-box {
+    background: #1a1a2e;
+    border-radius: 10px;
+    padding: 12px 20px;
+    text-align: center;
+  }
+  .stat-val { font-family: 'Fredoka One', cursive; font-size: 1.8rem; color: var(--accent); }
+  .stat-label { font-size: 0.7rem; color: #aaa; text-transform: uppercase; }
+
+  /* Particles */
+  .particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    animation: particleFly 0.8s ease-out forwards;
+    z-index: 999;
+  }
+  @keyframes particleFly {
+    0% { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* Notification */
+  .notif {
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(13,13,26,0.95);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    color: var(--accent);
+    z-index: 100;
+    animation: notifPop 2s ease-out forwards;
+    white-space: nowrap;
+  }
+  @keyframes notifPop {
+    0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+    15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+    70% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  }
+</style>
+
 </head>
 <body>
 
@@ -121,6 +604,845 @@
   <button class="btn" onclick="nextLevel()">Next Level →</button>
   <button class="btn secondary" onclick="showTitle()">Main Menu</button>
 </div>
+<script>
+// ===== WORD DATA BY THEME =====
+const THEMES = {
+  NATURE: {
+    words: [
+      { text: 'The', pos: 'article' },
+      { text: 'A', pos: 'article' },
+      { text: 'An', pos: 'article' },
+      { text: 'sun', pos: 'noun' },
+      { text: 'river', pos: 'noun' },
+      { text: 'forest', pos: 'noun' },
+      { text: 'bird', pos: 'noun' },
+      { text: 'rain', pos: 'noun' },
+      { text: 'mountain', pos: 'noun' },
+      { text: 'flower', pos: 'noun' },
+      { text: 'shines', pos: 'verb' },
+      { text: 'flows', pos: 'verb' },
+      { text: 'grows', pos: 'verb' },
+      { text: 'sings', pos: 'verb' },
+      { text: 'falls', pos: 'verb' },
+      { text: 'blooms', pos: 'verb' },
+      { text: 'bright', pos: 'adjective' },
+      { text: 'wild', pos: 'adjective' },
+      { text: 'tall', pos: 'adjective' },
+      { text: 'green', pos: 'adjective' },
+      { text: 'gently', pos: 'adverb' },
+      { text: 'slowly', pos: 'adverb' },
+      { text: 'high', pos: 'adverb' },
+      { text: 'it', pos: 'pronoun' },
+      { text: 'they', pos: 'pronoun' },
+    ]
+  }
+};
+
+// POS behavior config
+const POS_CONFIG = {
+  noun:      { speed: 0.8, evasion: 0.2, size: 38, flee: false },
+  verb:      { speed: 1.6, evasion: 0.8, size: 34, flee: true },
+  adjective: { speed: 1.3, evasion: 0.6, size: 32, flee: true },
+  pronoun:   { speed: 0.9, evasion: 0.1, size: 36, flee: false },
+  adverb:    { speed: 1.4, evasion: 0.5, size: 30, flee: true },
+  article:   { speed: 0.5, evasion: 0.1, size: 28, flee: false },
+};
+
+// ===== GAME STATE =====
+let state = {
+  sector: 1, level: 1, coins: 0,
+  timeLeft: 300,
+  collectedWords: [],
+  punctuation: [],
+  sentenceWords: [],
+  giftBoxes: [],
+  isFirstSector: true,
+  multiplier: 1,
+  lastSentence: '',
+};
+
+let arena = { w: 0, h: 0, r: 0 };
+let player = { x: 0, y: 0, vx: 0, vy: 0, r: 22, speed: 2.5 };
+let opponent = { x: 0, y: 0, vx: 0, vy: 0, r: 20, speed: 1.5, target: null, hunt: false };
+let wordNPCs = [];
+let walls = [];
+let hideZones = [];
+let flagPos = { x: 0, y: 0 };
+let gameLoop = null;
+let timerInterval = null;
+let joystick = { active: false, ox: 0, oy: 0, dx: 0, dy: 0 };
+let tutPage = 0;
+
+// ===== FLOATING TITLE WORDS =====
+function initTitle() {
+  const container = document.getElementById('floating-words');
+  const words = ['seek', 'find', 'build', 'grammar', 'sentence', 'words', 'hunt', 'wild', 'bright', 'they', 'flows'];
+  words.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'float-word';
+    el.textContent = w;
+    el.style.left = Math.random() * 90 + '%';
+    el.style.fontSize = (Math.random() * 1.5 + 0.8) + 'rem';
+    el.style.animationDuration = (Math.random() * 12 + 8) + 's';
+    el.style.animationDelay = (Math.random() * -15) + 's';
+    container.appendChild(el);
+  });
+}
+
+// ===== TUTORIAL =====
+function startTutorial() {
+  tutPage = 0;
+  showTutPage(0);
+  showScreen('tutorial-screen');
+}
+
+function tutNav(dir) {
+  tutPage = Math.max(0, Math.min(2, tutPage + dir));
+  showTutPage(tutPage);
+}
+
+function showTutPage(n) {
+  document.querySelectorAll('.tut-page').forEach((p,i) => {
+    p.classList.toggle('active', i === n);
+  });
+  document.querySelectorAll('.tut-dot').forEach((d,i) => {
+    d.classList.toggle('active', i === n);
+  });
+  document.getElementById('tut-back').style.display = n > 0 ? '' : 'none';
+  const nextBtn = document.getElementById('tut-next');
+  if (n === 2) {
+    nextBtn.textContent = "Let's Play! 🎮";
+    nextBtn.onclick = () => startGame();
+  } else {
+    nextBtn.textContent = 'Next →';
+    nextBtn.onclick = () => tutNav(1);
+  }
+}
+
+function skipToGame() { startGame(); }
+
+// ===== SCREEN MANAGEMENT =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showTitle() {
+  clearGameLoop();
+  showScreen('title-screen');
+}
+
+// ===== GAME INIT (FIXED) =====
+function startGame() {
+  // FIX: Show the screen FIRST so dimensions can be measured correctly
+  showScreen('game-screen');
+  
+  // Wait one frame for the browser to paint the layout
+  requestAnimationFrame(() => {
+    setupArena();
+    initLevel();
+    startGameLoop();
+    startTimer();
+    setupJoystick();
+  });
+}
+
+function setupArena() {
+  const gs = document.getElementById('game-screen');
+  
+  // FIX: Force a reflow to ensure the browser calculates dimensions
+  // (This prevents clientWidth from returning 0)
+  void gs.offsetHeight; 
+  
+  const size = Math.min(gs.clientWidth, gs.clientHeight - 120) * 0.94;
+  arena.w = size; 
+  arena.h = size; 
+  arena.r = size / 2;
+  
+  const a = document.getElementById('arena');
+  a.style.width = size + 'px';
+  a.style.height = size + 'px';
+}
+
+function initLevel() {
+  const a = document.getElementById('arena');
+  // Clear old dynamic elements
+  document.querySelectorAll('.word-npc,.wall,.hide-zone,.gift-box').forEach(e => e.remove());
+  wordNPCs = []; walls = []; hideZones = [];
+  state.collectedWords = [];
+  state.punctuation = [];
+  state.sentenceWords = [];
+  state.multiplier = 1;
+  updateWordBar();
+
+  // Place player
+  player.x = arena.r * 0.3; player.y = arena.r * 0.3;
+  player.vx = 0; player.vy = 0;
+  updateEntity('player', player.x, player.y, player.r * 2);
+
+  // Place opponent
+  opponent.x = -arena.r * 0.4; opponent.y = -arena.r * 0.4;
+  opponent.vx = 0; opponent.vy = 0;
+  updateEntity('opponent', opponent.x, opponent.y, opponent.r * 2);
+
+  // Place flag
+  flagPos.x = (Math.random() - 0.5) * arena.r * 1.0;
+  flagPos.y = (Math.random() - 0.5) * arena.r * 1.0;
+  const flag = document.getElementById('flag');
+  positionInArena(flag, flagPos.x, flagPos.y, 0);
+  flag.onclick = () => openSentenceBuilder();
+
+  // Walls
+  const wallCount = 4 + state.level;
+  for (let i = 0; i < Math.min(wallCount, 8); i++) {
+    createWall();
+  }
+
+  // Hide zones
+  for (let i = 0; i < 3; i++) createHideZone();
+
+  // Gift box at halfway (simplified: place 1-2 gift boxes)
+  createGiftBox();
+  if (state.level > 1) createGiftBox();
+
+  // Spawn word NPCs
+  const theme = THEMES.NATURE;
+  const wordList = [...theme.words].sort(() => Math.random() - 0.5).slice(0, 12 + state.level * 2);
+  wordList.forEach(w => spawnWordNPC(w));
+
+  // Timer
+  state.timeLeft = state.isFirstSector ? 300 : 180;
+  updateTimerDisplay();
+  document.getElementById('hud-level').textContent = `Sector ${state.sector} · Lvl ${state.level}\nNATURE`;
+  document.getElementById('coin-count').textContent = state.coins;
+}
+
+function createWall() {
+  const a = document.getElementById('arena');
+  const el = document.createElement('div');
+  el.className = 'wall';
+  const isH = Math.random() > 0.5;
+  const len = 40 + Math.random() * 80;
+  const thick = 8 + Math.random() * 6;
+  el.style.width = (isH ? len : thick) + 'px';
+  el.style.height = (isH ? thick : len) + 'px';
+  // Random position inside circle
+  let wx, wy;
+  do {
+    wx = (Math.random() - 0.5) * arena.r * 1.5;
+    wy = (Math.random() - 0.5) * arena.r * 1.5;
+  } while (Math.sqrt(wx*wx + wy*wy) > arena.r * 0.85);
+  positionInArena(el, wx, wy, -len/2);
+  a.appendChild(el);
+  walls.push({ x: wx - (isH ? len/2 : thick/2), y: wy - (isH ? thick/2 : len/2), w: isH ? len : thick, h: isH ? thick : len, cx: wx, cy: wy });
+}
+
+function createHideZone() {
+  const a = document.getElementById('arena');
+  const el = document.createElement('div');
+  el.className = 'hide-zone';
+  const size = 35 + Math.random() * 25;
+  el.style.width = size + 'px';
+  el.style.height = size + 'px';
+  let zx, zy;
+  do {
+    zx = (Math.random() - 0.5) * arena.r * 1.4;
+    zy = (Math.random() - 0.5) * arena.r * 1.4;
+  } while (Math.sqrt(zx*zx + zy*zy) > arena.r * 0.8);
+  el.style.left = (arena.r + zx - size/2) + 'px';
+  el.style.top = (arena.r + zy - size/2) + 'px';
+  a.appendChild(el);
+  hideZones.push({ x: zx, y: zy, size });
+}
+
+function createGiftBox() {
+  const a = document.getElementById('arena');
+  const el = document.createElement('div');
+  el.className = 'gift-box';
+  el.textContent = '🎁';
+  let gx, gy;
+  do {
+    gx = (Math.random() - 0.5) * arena.r * 1.4;
+    gy = (Math.random() - 0.5) * arena.r * 1.4;
+  } while (Math.sqrt(gx*gx + gy*gy) > arena.r * 0.8);
+  positionInArena(el, gx, gy, -18);
+  a.appendChild(el);
+  const punct = ['!', ',', '—', ';', "'"];
+  const reward = punct[Math.floor(Math.random() * punct.length)];
+  el.onclick = () => collectGiftBox(el, reward);
+  state.giftBoxes.push({ el, x: gx, y: gy, reward });
+}
+
+function collectGiftBox(el, reward) {
+  state.punctuation.push(reward);
+  spawnParticles(el.getBoundingClientRect().left + 18, el.getBoundingClientRect().top + 18, '#f7c948');
+  showNotif(`🎁 Got punctuation: "${reward}"`);
+  el.remove();
+}
+
+function spawnWordNPC(wordDef) {
+  const a = document.getElementById('arena');
+  const cfg = POS_CONFIG[wordDef.pos];
+  const el = document.createElement('div');
+  el.className = `word-npc ${wordDef.pos}`;
+  el.textContent = wordDef.text;
+
+  let wx, wy;
+  do {
+    wx = (Math.random() - 0.5) * arena.r * 1.5;
+    wy = (Math.random() - 0.5) * arena.r * 1.5;
+  } while (Math.sqrt(wx*wx + wy*wy) > arena.r * 0.82);
+
+  el.style.left = (arena.r + wx - cfg.size/2) + 'px';
+  el.style.top = (arena.r + wy - cfg.size/2) + 'px';
+
+  // Direction
+  let angle = Math.random() * Math.PI * 2;
+  const npc = {
+    el, word: wordDef.text, pos: wordDef.pos,
+    x: wx, y: wy, r: cfg.size/2,
+    vx: Math.cos(angle) * cfg.speed,
+    vy: Math.sin(angle) * cfg.speed,
+    speed: cfg.speed, evasion: cfg.evasion,
+    flee: cfg.flee, captured: false, hiding: false,
+    hideTick: 0,
+  };
+
+  el.addEventListener('click', () => captureWordNPC(npc));
+  a.appendChild(el);
+  wordNPCs.push(npc);
+}
+
+function captureWordNPC(npc) {
+  if (npc.captured) return;
+  const dist = Math.sqrt((npc.x - player.x)**2 + (npc.y - player.y)**2);
+  if (dist > player.r + npc.r + 30) return; // must be close
+  npc.captured = true;
+  npc.el.classList.add('captured');
+  state.collectedWords.push({ text: npc.word, pos: npc.pos });
+  spawnParticles(npc.el.getBoundingClientRect().left, npc.el.getBoundingClientRect().top, '#6bffb8');
+  showNotif(`Caught: "${npc.word}" (${npc.pos})`);
+  updateWordBar();
+}
+
+// ===== POSITIONING =====
+function positionInArena(el, cx, cy, offset) {
+  el.style.left = (arena.r + cx + offset) + 'px';
+  el.style.top = (arena.r + cy + offset) + 'px';
+}
+
+function updateEntity(id, cx, cy, size) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (size) { el.style.width = size + 'px'; el.style.height = size + 'px'; }
+  el.style.left = (arena.r + cx - (size || player.r*2)/2) + 'px';
+  el.style.top = (arena.r + cy - (size || player.r*2)/2) + 'px';
+}
+
+// ===== GAME LOOP =====
+function startGameLoop() {
+  if (gameLoop) cancelAnimationFrame(gameLoop);
+  function tick() {
+    updatePlayer();
+    updateOpponent();
+    updateWordNPCs();
+    checkProximities();
+    gameLoop = requestAnimationFrame(tick);
+  }
+  gameLoop = requestAnimationFrame(tick);
+}
+
+function clearGameLoop() {
+  if (gameLoop) cancelAnimationFrame(gameLoop);
+  if (timerInterval) clearInterval(timerInterval);
+  gameLoop = null; timerInterval = null;
+}
+
+function updatePlayer() {
+  if (!joystick.active) {
+    player.vx *= 0.85; player.vy *= 0.85;
+  } else {
+    player.vx = joystick.dx * player.speed;
+    player.vy = joystick.dy * player.speed;
+  }
+  let nx = player.x + player.vx;
+  let ny = player.y + player.vy;
+  // Keep in circle
+  const dist = Math.sqrt(nx*nx + ny*ny);
+  if (dist + player.r > arena.r - 4) {
+    const angle = Math.atan2(ny, nx);
+    nx = Math.cos(angle) * (arena.r - player.r - 4);
+    ny = Math.sin(angle) * (arena.r - player.r - 4);
+    player.vx *= -0.3; player.vy *= -0.3;
+  }
+  // Wall collision (simplified)
+  player.x =
+
+  player.x = nx; player.y = ny;
+  updateEntity('player', player.x, player.y, player.r * 2);
+}
+
+function updateOpponent() {
+  // Hunt player when close, else wander
+  const dx = player.x - opponent.x;
+  const dy = player.y - opponent.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+
+  if (dist < arena.r * 0.6) {
+    opponent.hunt = true;
+    // Move toward player
+    const angle = Math.atan2(dy, dx);
+    opponent.vx += Math.cos(angle) * 0.15;
+    opponent.vy += Math.sin(angle) * 0.15;
+  } else {
+    opponent.hunt = false;
+    // Wander
+    opponent.vx += (Math.random() - 0.5) * 0.3;
+    opponent.vy += (Math.random() - 0.5) * 0.3;
+  }
+
+  // Clamp speed
+  const spd = Math.sqrt(opponent.vx**2 + opponent.vy**2);
+  if (spd > opponent.speed) {
+    opponent.vx = (opponent.vx/spd) * opponent.speed;
+    opponent.vy = (opponent.vy/spd) * opponent.speed;
+  }
+
+  let nx = opponent.x + opponent.vx;
+  let ny = opponent.y + opponent.vy;
+  const d2 = Math.sqrt(nx*nx + ny*ny);
+  if (d2 + opponent.r > arena.r - 4) {
+    const a2 = Math.atan2(ny, nx);
+    nx = Math.cos(a2) * (arena.r - opponent.r - 4);
+    ny = Math.sin(a2) * (arena.r - opponent.r - 4);
+    opponent.vx *= -0.5; opponent.vy *= -0.5;
+  }
+  opponent.x = nx; opponent.y = ny;
+  updateEntity('opponent', opponent.x, opponent.y, opponent.r * 2);
+}
+
+function updateWordNPCs() {
+  wordNPCs.forEach(npc => {
+    if (npc.captured) return;
+
+    const cfg = POS_CONFIG[npc.pos];
+    const pdx = player.x - npc.x;
+    const pdy = player.y - npc.y;
+    const pdist = Math.sqrt(pdx*pdx + pdy*pdy);
+
+    // Flee if player is close and NPC has flee behavior
+    if (npc.flee && pdist < 80) {
+      const angle = Math.atan2(pdy, pdx);
+      npc.vx -= Math.cos(angle) * cfg.evasion * 0.5;
+      npc.vy -= Math.sin(angle) * cfg.evasion * 0.5;
+    }
+
+    // Pronoun: stubborn, barely moves
+    if (npc.pos === 'pronoun') {
+      npc.vx *= 0.95; npc.vy *= 0.95;
+      if (Math.random() < 0.01) {
+        const a = Math.random() * Math.PI * 2;
+        npc.vx = Math.cos(a) * 0.5;
+        npc.vy = Math.sin(a) * 0.5;
+      }
+    }
+
+    // Verb: erratic bursts
+    if (npc.pos === 'verb' && Math.random() < 0.02) {
+      const a = Math.random() * Math.PI * 2;
+      npc.vx += Math.cos(a) * 1.5;
+      npc.vy += Math.sin(a) * 1.5;
+    }
+
+    // Clamp speed
+    const spd = Math.sqrt(npc.vx**2 + npc.vy**2);
+    if (spd > cfg.speed * 1.5) {
+      npc.vx = (npc.vx/spd) * cfg.speed * 1.5;
+      npc.vy = (npc.vy/spd) * cfg.speed * 1.5;
+    }
+
+    // Wander drift
+    npc.vx += (Math.random() - 0.5) * 0.1;
+    npc.vy += (Math.random() - 0.5) * 0.1;
+    npc.vx *= 0.98; npc.vy *= 0.98;
+
+    let nx = npc.x + npc.vx;
+    let ny = npc.y + npc.vy;
+    const nd = Math.sqrt(nx*nx + ny*ny);
+    if (nd + npc.r > arena.r - 10) {
+      const na = Math.atan2(ny, nx);
+      nx = Math.cos(na) * (arena.r - npc.r - 10);
+      ny = Math.sin(na) * (arena.r - npc.r - 10);
+      npc.vx *= -0.5; npc.vy *= -0.5;
+    }
+    npc.x = nx; npc.y = ny;
+
+    // Update position
+    npc.el.style.left = (arena.r + npc.x - npc.r) + 'px';
+    npc.el.style.top = (arena.r + npc.y - npc.r) + 'px';
+
+    // Check if in hide zone
+    const inHide = hideZones.some(hz => {
+      const hd = Math.sqrt((npc.x - hz.x)**2 + (npc.y - hz.y)**2);
+      return hd < hz.size;
+    });
+    npc.el.classList.toggle('hiding', inHide && !npc.captured);
+  });
+}
+
+function checkProximities() {
+  // Auto-capture if player overlaps word
+  wordNPCs.forEach(npc => {
+    if (npc.captured) return;
+    const dx = npc.x - player.x;
+    const dy = npc.y - player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < player.r + npc.r - 5) {
+      captureWordNPC(npc);
+    }
+  });
+
+  // Gift boxes auto-collect
+  state.giftBoxes.forEach(gb => {
+    if (!gb.el.parentNode) return;
+    const dx = gb.x - player.x;
+    const dy = gb.y - player.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < player.r + 18) {
+      collectGiftBox(gb.el, gb.reward);
+    }
+  });
+
+  // Opponent hunts: if close to player, screen shake
+  const odx = opponent.x - player.x;
+  const ody = opponent.y - player.y;
+  const odist = Math.sqrt(odx*odx + ody*ody);
+  if (odist < 60 && Math.random() < 0.05) {
+    triggerScreenShake();
+  }
+
+  // Flag proximity
+  const fdx = flagPos.x - player.x;
+  const fdy = flagPos.y - player.y;
+  const fdist = Math.sqrt(fdx*fdx + fdy*fdy);
+  if (fdist < player.r + 20 && state.collectedWords.length > 0) {
+    openSentenceBuilder();
+  }
+}
+
+// ===== SCREEN SHAKE =====
+function triggerScreenShake() {
+  const gs = document.getElementById('game-screen');
+  gs.classList.remove('shaking');
+  void gs.offsetWidth;
+  gs.classList.add('shaking');
+  showNotif('📳 Opponent spotted you!');
+}
+
+// ===== TIMER =====
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    state.timeLeft--;
+    updateTimerDisplay();
+    if (state.timeLeft <= 0) {
+      clearInterval(timerInterval);
+      timeUp();
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(state.timeLeft / 60);
+  const s = state.timeLeft % 60;
+  const el = document.getElementById('timer');
+  el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  el.classList.toggle('warning', state.timeLeft <= 30);
+}
+
+function timeUp() {
+  clearGameLoop();
+  if (state.collectedWords.length > 0) {
+    openSentenceBuilder();
+  } else {
+    showNotif("Time's up! Try again.");
+    setTimeout(() => initLevel(), 2000);
+  }
+}
+
+// ===== JOYSTICK =====
+function setupJoystick() {
+  const area = document.getElementById('joystick-area');
+  const base = document.getElementById('joystick-base');
+  const knob = document.getElementById('joystick-knob');
+  area.style.pointerEvents = 'all';
+
+  area.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    joystick.active = true;
+    joystick.ox = t.clientX;
+    joystick.oy = t.clientY;
+    base.style.display = 'flex';
+    base.style.left = (t.clientX - 40) + 'px';
+    base.style.top = (t.clientY - 40) + 'px';
+    knob.style.transform = 'translate(0,0)';
+  }, { passive: true });
+
+  area.addEventListener('touchmove', e => {
+    e.preventDefault();
+    const t = e.touches[0];
+    const dx = t.clientX - joystick.ox;
+    const dy = t.clientY - joystick.oy;
+    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 36);
+    const angle = Math.atan2(dy, dx);
+    joystick.dx = Math.cos(angle) * (dist/36);
+    joystick.dy = Math.sin(angle) * (dist/36);
+    knob.style.transform = `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`;
+  }, { passive: false });
+
+  const endJoy = () => {
+    joystick.active = false;
+    joystick.dx = 0; joystick.dy = 0;
+    base.style.display = 'none';
+  };
+  area.addEventListener('touchend', endJoy);
+  area.addEventListener('touchcancel', endJoy);
+
+  // Mouse fallback for desktop testing
+  let mouseDown = false;
+  area.addEventListener('mousedown', e => {
+    mouseDown = true;
+    joystick.active = true;
+    joystick.ox = e.clientX; joystick.oy = e.clientY;
+    base.style.display = 'flex';
+    base.style.left = (e.clientX - 40) + 'px';
+    base.style.top = (e.clientY - 40) + 'px';
+  });
+  area.addEventListener('mousemove', e => {
+    if (!mouseDown) return;
+    const dx = e.clientX - joystick.ox;
+    const dy = e.clientY - joystick.oy;
+    const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 36);
+    const angle = Math.atan2(dy, dx);
+    joystick.dx = Math.cos(angle) * (dist/36);
+    joystick.dy = Math.sin(angle) * (dist/36);
+    knob.style.transform = `translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px)`;
+  });
+  area.addEventListener('mouseup', () => { mouseDown = false; joystick.active = false; joystick.dx = 0; joystick.dy = 0; base.style.display = 'none'; });
+}
+
+// ===== WORD BAR =====
+function updateWordBar() {
+  const bar = document.getElementById('word-bar');
+  bar.innerHTML = '<div id="bar-label">Collected Words (' + state.collectedWords.length + ')</div>';
+  state.collectedWords.forEach(w => {
+    const el = document.createElement('div');
+    el.className = 'collected-word';
+    el.textContent = w.text;
+    bar.appendChild(el);
+  });
+}
+
+// ===== SENTENCE BUILDER =====
+function openSentenceBuilder() {
+  clearGameLoop();
+  state.sentenceWords = [];
+  renderSentenceScreen();
+  showScreen('sentence-screen');
+}
+
+function renderSentenceScreen() {
+  // Available words
+  const avail = document.getElementById('available-words');
+  avail.innerHTML = '';
+  state.collectedWords.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'avail-word';
+    el.textContent = w.text;
+    el.onclick = () => addToSentence(w, i, el);
+    avail.appendChild(el);
+  });
+
+  // Punctuation
+  const pa = document.getElementById('punct-available');
+  pa.innerHTML = '';
+  if (state.punctuation.length > 0) {
+    const hint = document.createElement('div');
+    hint.style.cssText = 'width:100%;text-align:center;font-size:0.7rem;color:#888;margin-bottom:4px';
+    hint.textContent = '🎁 Punctuation perks (optional — earn a multiplier!)';
+    pa.appendChild(hint);
+    state.punctuation.forEach((p, i) => {
+      const el = document.createElement('div');
+      el.className = 'punct-word';
+      el.textContent = `"${p}"`;
+      el.onclick = () => addPunctToSentence(p, i, el);
+      pa.appendChild(el);
+    });
+  }
+
+  renderSentenceBuilder();
+  document.getElementById('sentence-feedback').textContent = '';
+}
+
+function addToSentence(w, i, el) {
+  state.sentenceWords.push({ ...w, type: 'word' });
+  el.style.opacity = '0.3';
+  el.onclick = null;
+  renderSentenceBuilder();
+}
+
+function addPunctToSentence(p, i, el) {
+  state.sentenceWords.push({ text: p, pos: 'punct', type: 'punct' });
+  el.style.opacity = '0.3';
+  el.onclick = null;
+  state.multiplier = Math.max(state.multiplier, 1.5);
+  renderSentenceBuilder();
+  document.getElementById('sentence-feedback').textContent = '✨ Punctuation perk activated! Multiplier boost incoming.';
+  document.getElementById('sentence-feedback').className = 'feedback-good';
+}
+
+function renderSentenceBuilder() {
+  const builder = document.getElementById('sentence-builder');
+  builder.innerHTML = '';
+  state.sentenceWords.forEach((w, i) => {
+    const el = document.createElement('div');
+    el.className = 'sentence-word';
+    el.textContent = w.text;
+    el.onclick = () => removeFromSentence(i);
+    builder.appendChild(el);
+  });
+  if (state.sentenceWords.length === 0) {
+    builder.innerHTML = '<div style="color:#444;font-size:0.8rem;margin:auto">Tap words below to build your sentence...</div>';
+  }
+}
+
+function removeFromSentence(i) {
+  state.sentenceWords.splice(i, 1);
+  renderSentenceScreen();
+}
+
+function clearSentence() {
+  state.sentenceWords = [];
+  renderSentenceScreen();
+}
+
+function goBackToGame() {
+  showScreen('game-screen');
+  startGameLoop();
+  startTimer();
+}
+
+// ===== SENTENCE VALIDATION =====
+function submitSentence() {
+  if (state.sentenceWords.length < 2) {
+    document.getElementById('sentence-feedback').textContent = '⚠️ Need at least 2 words!';
+    document.getElementById('sentence-feedback').className = 'feedback-bad';
+    return;
+  }
+
+  const words = state.sentenceWords.filter(w => w.type === 'word');
+  const hasPunct = state.sentenceWords.some(w => w.type === 'punct');
+  const result = validateSentence(words);
+
+  if (result.valid) {
+    const sentence = state.sentenceWords.map(w => w.text).join(' ');
+    state.lastSentence = sentence + '.';
+    const timeBonus = Math.floor(state.timeLeft / 10);
+    const baseCoins = 10 + words.length * 3 + timeBonus;
+    const earned = Math.floor(baseCoins * state.multiplier);
+    state.coins += earned;
+    clearGameLoop();
+    showWinScreen(earned);
+  } else {
+    document.getElementById('sentence-feedback').textContent = '❌ ' + result.reason;
+    document.getElementById('sentence-feedback').className = 'feedback-bad';
+  }
+}
+
+function validateSentence(words) {
+  const posList = words.map(w => w.pos);
+
+  // Must have a noun or pronoun
+  const hasSubject = posList.includes('noun') || posList.includes('pronoun');
+  if (!hasSubject) return { valid: false, reason: 'Need a noun or pronoun (subject)!' };
+
+  // Must have a verb
+  const hasVerb = posList.includes('verb');
+  if (!hasVerb) return { valid: false, reason: 'Need a verb!' };
+
+  // Article must come before noun
+  for (let i = 0; i < posList.length; i++) {
+    if (posList[i] === 'article') {
+      if (i === posList.length - 1 || (posList[i+1] !== 'noun' && posList[i+1] !== 'adjective')) {
+        return { valid: false, reason: 'Article must come before a noun or adjective!' };
+      }
+    }
+  }
+
+  return { valid: true };
+}
+
+// ===== WIN SCREEN =====
+function showWinScreen(earned) {
+  document.getElementById('win-sentence-display').textContent = '"' + state.lastSentence + '"';
+  document.getElementById('win-coins').textContent = '+' + earned;
+  document.getElementById('win-time').textContent = state.timeLeft + 's';
+  document.getElementById('win-mult').textContent = state.multiplier + 'x';
+  document.getElementById('coin-count').textContent = state.coins;
+  showScreen('win-screen');
+  // Particles
+  for (let i = 0; i < 20; i++) {
+    setTimeout(() => spawnParticles(
+      window.innerWidth / 2 + (Math.random()-0.5)*200,
+      window.innerHeight / 2 + (Math.random()-0.5)*200,
+      ['#f7c948','#6bffb8','#6b9fff','#ff8888'][Math.floor(Math.random()*4)]
+    ), i * 80);
+  }
+}
+
+function nextLevel() {
+  state.level++;
+  if (state.level > 10) {
+    state.level = 1;
+    state.sector++;
+    state.isFirstSector = false;
+  }
+  startGame();
+}
+
+// ===== PARTICLES =====
+function spawnParticles(x, y, color) {
+  for (let i = 0; i < 6; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.width = (4 + Math.random() * 6) + 'px';
+    p.style.height = p.style.width;
+    p.style.background = color;
+    p.style.left = x + 'px';
+    p.style.top = y + 'px';
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 30 + Math.random() * 50;
+    p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+    p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 800);
+  }
+}
+
+// ===== NOTIFICATION =====
+function showNotif(msg) {
+  const existing = document.querySelector('.notif');
+  if (existing) existing.remove();
+  const n = document.createElement('div');
+  n.className = 'notif';
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 2100);
+}
+
+// ===== INIT =====
+initTitle();
+</script>
 
 <!-- Scripts will be inserted here in Part 3 -->
 </body>
