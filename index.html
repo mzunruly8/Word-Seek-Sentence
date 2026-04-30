@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Word Seek Sentence</title>
+<!-- Styles will be inserted here in Part 2 -->
+</head>
+<body>
+
+<!-- ===== TITLE SCREEN ===== -->
+<div id="title-screen" class="screen active">
+  <div class="floating-words" id="floating-words"></div>
+  <div class="game-title">WORD SEEK<br>SENTENCE</div>
+  <div class="game-subtitle">Seek the words · Build the sentence</div>
+  <button class="btn" onclick="startTutorial()">PLAY</button>
+  <button class="btn secondary" style="margin-top:-8px" onclick="skipToGame()">Skip Tutorial</button>
+  <div style="font-size:0.7rem;color:#444;margin-top:10px;">Sector 1 · Level 1 · Theme: NATURE</div>
+</div>
+
+<!-- ===== TUTORIAL SCREEN ===== -->
+<div id="tutorial-screen" class="screen">
+  <div style="font-family:'Fredoka One',cursive;font-size:1rem;color:#666;letter-spacing:2px">TUTORIAL</div>
+
+  <div class="tut-page active" id="tut-0">
+    <div class="tut-icon">🕹️</div>
+    <div class="tut-title">How to Move</div>
+    <div class="tut-text">Touch anywhere on the arena and drag to move your word. A floating directional pad will appear wherever you touch. Dodge walls, slip past obstacles, and track down hidden words!</div>
+    <div style="font-size:2.5rem;margin:8px">🟢 = YOU &nbsp; 🔴 = OPPONENT</div>
+  </div>
+
+  <div class="tut-page" id="tut-1">
+    <div class="tut-title">Parts of Speech Matter</div>
+    <div class="pos-grid">
+      <div class="pos-card"><div class="emoji">📘</div><div class="pos-name" style="color:#6b9fff">Noun</div><div class="pos-desc">Steady. Easy catch.</div></div>
+      <div class="pos-card"><div class="emoji">⚡</div><div class="pos-name" style="color:#ff8888">Verb</div><div class="pos-desc">Fast & evasive!</div></div>
+      <div class="pos-card"><div class="emoji">👑</div><div class="pos-name" style="color:#f7c948">Pronoun</div><div class="pos-desc">Stubborn. Hard to catch.</div></div>
+      <div class="pos-card"><div class="emoji">🌈</div><div class="pos-name" style="color:#cc88ff">Adjective</div><div class="pos-desc">Skittish. Flees fast.</div></div>
+      <div class="pos-card"><div class="emoji">💨</div><div class="pos-name" style="color:#6bffb8">Adverb</div><div class="pos-desc">Wanders. Unpredictable.</div></div>
+      <div class="pos-card"><div class="emoji">📄</div><div class="pos-name" style="color:#aaa">Article</div><div class="pos-desc">Slow. Easy pickup.</div></div>
+    </div>
+    <div class="tut-text" style="margin-top:4px">Bigger words move slower. Verbs have extra pizzazz. Pronouns are stubborn!</div>
+  </div>
+
+  <div class="tut-page" id="tut-2">
+    <div class="tut-icon">🚩</div>
+    <div class="tut-title">End the Level</div>
+    <div class="tut-text">Collect words, then reach the <strong style="color:var(--accent)">flag 🚩</strong> to build your sentence. It must be <strong style="color:var(--accent3)">grammatically correct</strong> to pass!<br><br>🎁 Gift boxes give you <strong style="color:var(--accent)">punctuation perks</strong>. Use them to earn a <strong style="color:var(--accent)">coin multiplier!</strong><br><br>📳 <strong style="color:var(--accent2)">Screen shake</strong> means the opponent spotted you — hide or flee!</div>
+  </div>
+
+  <div class="tut-dots">
+    <div class="tut-dot active" id="dot-0"></div>
+    <div class="tut-dot" id="dot-1"></div>
+    <div class="tut-dot" id="dot-2"></div>
+  </div>
+
+  <div style="display:flex;gap:12px">
+    <button class="btn secondary" id="tut-back" onclick="tutNav(-1)" style="display:none">Back</button>
+    <button class="btn" id="tut-next" onclick="tutNav(1)">Next →</button>
+  </div>
+</div>
+
+<!-- ===== GAME SCREEN ===== -->
+<div id="game-screen" class="screen">
+  <div class="game-hud">
+    <div class="hud-timer" id="timer">5:00</div>
+    <div class="hud-level" id="hud-level">Sector 1 · Lvl 1<br>NATURE</div>
+    <div class="hud-coins">🪙 <span id="coin-count">0</span></div>
+  </div>
+
+  <div id="arena-container">
+    <div id="arena">
+      <div id="player" class="player-entity">YOU</div>
+      <div id="opponent" class="player-entity">FOE</div>
+      <div id="flag">🚩</div>
+    </div>
+  </div>
+
+  <div id="word-bar">
+    <div id="bar-label">Collected Words</div>
+  </div>
+
+  <div id="joystick-area">
+    <div id="joystick-base">
+      <div id="joystick-knob"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SENTENCE SCREEN ===== -->
+<div id="sentence-screen" class="screen">
+  <div class="sentence-title">🚩 Build Your Sentence</div>
+  <div class="sentence-hint">Tap words to add them. Arrange to form a correct sentence. Use punctuation for a bonus!</div>
+
+  <div id="sentence-builder"></div>
+  <div style="font-size:0.7rem;color:#666">↑ Tap words above to remove them</div>
+
+  <div id="available-words"></div>
+
+  <div id="punct-available" class="punct-section"></div>
+
+  <div id="sentence-feedback"></div>
+
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <button class="btn secondary" onclick="clearSentence()">Clear</button>
+    <button class="btn" onclick="submitSentence()">Submit ✓</button>
+  </div>
+  <button class="btn secondary" style="font-size:0.8rem;padding:8px 20px" onclick="goBackToGame()">← Keep Seeking</button>
+</div>
+
+<!-- ===== WIN SCREEN ===== -->
+<div id="win-screen" class="screen">
+  <div style="font-size:3rem">🎉</div>
+  <div class="win-title">Level Clear!</div>
+  <div id="win-sentence-display" class="win-sentence"></div>
+  <div class="win-stats">
+    <div class="stat-box"><div class="stat-val" id="win-coins">0</div><div class="stat-label">Coins</div></div>
+    <div class="stat-box"><div class="stat-val" id="win-time">0s</div><div class="stat-label">Time Left</div></div>
+    <div class="stat-box"><div class="stat-val" id="win-mult">1x</div><div class="stat-label">Multiplier</div></div>
+  </div>
+  <button class="btn" onclick="nextLevel()">Next Level →</button>
+  <button class="btn secondary" onclick="showTitle()">Main Menu</button>
+</div>
+
+<!-- Scripts will be inserted here in Part 3 -->
+</body>
+</html>
